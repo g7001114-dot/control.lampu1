@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ESP32 Control Dashboard</title>
+    <!-- Library MQTT WebSocket -->
+    <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
+    <style>
+        body { font-family: 'Segoe UI', Arial, sans-serif; background: #eceff1; text-align: center; padding: 20px; margin: 0; }
+        .container { max-width: 450px; background: white; margin: auto; padding: 25px; border-radius: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.15); }
+        h2 { margin-top: 0; color: #333; }
+        
+        .status-badge { display: inline-block; padding: 6px 14px; border-radius: 20px; font-weight: bold; font-size: 14px; margin-bottom: 20px; }
+        .online { background: #e8f5e9; color: #2e7d32; }
+        .offline { background: #ffebee; color: #c62828; }
+
+        .grid-lampu { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 20px; }
+        .card-lampu { background: #f8f9fa; border: 2px solid #e0e0e0; border-radius: 10px; padding: 15px; transition: all 0.3s; }
+        .card-lampu.active { border-color: #fbc02d; background: #fffde7; }
+        
+        .bulb-icon { font-size: 45px; margin-bottom: 5px; opacity: 0.3; transition: all 0.3s; }
+        .bulb-icon.on { opacity: 1; filter: drop-shadow(0 0 8px #fbc02d); }
+
+        .btn { width: 100%; padding: 12px; margin: 8px 0; border: none; border-radius: 8px; font-size: 16px; font-weight: bold; color: white; cursor: pointer; transition: 0.2s; }
+        .btn:active { transform: scale(0.98); }
+        .btn-blue { background: #1976d2; }
+        .btn-orange { background: #f57c00; }
+        .btn-purple { background: #7b1fa2; }
+        .btn-red { background: #d32f2f; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h2>ESP32 Control Dashboard</h2>
+    <div id="connection-status" class="status-badge offline">Menghubungkan ke Cloud...</div>
+
+    <!-- Tampilan Visual Status Lampu -->
+    <div class="grid-lampu">
+        <div class="card-lampu" id="card-l12">
+            <div id="bulb-l12" class="bulb-icon">💡</div>
+            <strong>Lampu 1 & 2</strong>
+            <div id="text-l12" style="font-size:12px; color:#666;">OFF</div>
+        </div>
+        <div class="card-lampu" id="card-l34">
+            <div id="bulb-l34" class="bulb-icon">💡</div>
+            <strong>Kedip 3 & 4</strong>
+            <div id="text-l34" style="font-size:12px; color:#666;">OFF</div>
+        </div>
+    </div>
+
+    <!-- Tombol Kontrol Interaktif -->
+    <button class="btn btn-blue" onclick="sendCommand('LAMP12_TOGGLE')">Toggle Lampu 1 & 2</button>
+    <button class="btn btn-orange" onclick="sendCommand('LAMP34_TOGGLE')">Toggle Kedip 3 & 4</button>
+    <button class="btn btn-purple" onclick="sendCommand('SPEED_TOGGLE')">Ubah Kecepatan Kedip</button>
+    <button class="btn btn-red" onclick="sendCommand('STOP_ALL')">STOP ALL</button>
+</div>
+
+<script>
+    // Koneksi ke Public MQTT Broker via WebSocket
+    const client = mqtt.connect('wss://test.mosquitto.org:8081');
+
+    client.on('connect', () => {
+        const badge = document.getElementById('connection-status');
+        badge.innerText = "Terhubung ke Cloud";
+        badge.className = "status-badge online";
+        
+        // Subscribe ke topik status dari ESP32
+        client.subscribe('esp32/lampu/status');
+    });
+
+    client.on('offline', () => {
+        const badge = document.getElementById('connection-status');
+        badge.innerText = "Terputus dari Cloud";
+        badge.className = "status-badge offline";
+    });
+
+    // Menerima pembaruan status dari ESP32
+    client.on('message', (topic, message) => {
+        const payload = message.toString(); // Contoh data: "L12:ON,L34:OFF,SPD:SLOW"
+        
+        // Update Lampu 1 & 2
+        if (payload.includes("L12:ON")) {
+            document.getElementById('bulb-l12').className = "bulb-icon on";
+            document.getElementById('card-l12').className = "card-lampu active";
+            document.getElementById('text-l12').innerText = "MENYALA";
+        } else {
+            document.getElementById('bulb-l12').className = "bulb-icon";
+            document.getElementById('card-l12').className = "card-lampu";
+            document.getElementById('text-l12').innerText = "MATI";
+        }
+
+        // Update Lampu 3 & 4 (Mode Kedip)
+        if (payload.includes("L34:ON")) {
+            document.getElementById('bulb-l34').className = "bulb-icon on";
+            document.getElementById('card-l34').className = "card-lampu active";
+            document.getElementById('text-l34').innerText = "KEDIP ACTIVE";
+        } else {
+            document.getElementById('bulb-l34').className = "bulb-icon";
+            document.getElementById('card-l34').className = "card-lampu";
+            document.getElementById('text-l34').innerText = "MATI";
+        }
+    });
+
+    // Fungsi Mengirim Perintah ke ESP32
+    function sendCommand(cmd) {
+        client.publish('esp32/lampu/control', cmd);
+    }
+</script>
+
+</body>
+</html>
