@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ESP32 Smart Controller</title>
+    <!-- MQTT over WebSocket Library -->
+    <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
+    <style>
+        * { box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; background: #f2f2f7; text-align: center; padding: 20px; margin: 0; }
+        .container { max-width: 450px; background: #ffffff; margin: auto; padding: 25px; border-radius: 24px; box-shadow: 0 10px 30px rgba(0,0,0,0.08); }
+        h2 { margin-top: 0; color: #1c1c1e; font-size: 22px; font-weight: 700; }
+        
+        .status-badge { display: inline-block; padding: 6px 16px; border-radius: 20px; font-weight: 600; font-size: 13px; margin-bottom: 20px; }
+        .online { background: #e8f5e9; color: #2e7d32; }
+        .offline { background: #ffebee; color: #c62828; }
+
+        /* Grid Kartu Lampu Visual */
+        .grid-lampu { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 25px; }
+        .card-lampu { background: #f8f9fa; border: 2px solid #e5e5ea; border-radius: 16px; padding: 15px; transition: all 0.3s ease; }
+        .card-lampu.active { border-color: #ffcc00; background: #fffbe6; }
+        
+        .bulb-wrapper { display: inline-block; width: 60px; height: 60px; margin-bottom: 5px; }
+        .bulb-icon { font-size: 48px; line-height: 60px; opacity: 0.25; transition: all 0.3s ease; filter: grayscale(100%); }
+        .card-lampu.active .bulb-icon { opacity: 1; filter: grayscale(0%); }
+
+        /* Desain Saklar (Toggle Switch) */
+        .switches-container { display: flex; justify-content: space-between; gap: 12px; margin-bottom: 25px; }
+        .switch-btn { flex: 1; padding: 14px 10px; border-radius: 14px; border: none; font-weight: 700; font-size: 14px; color: white; cursor: pointer; transition: all 0.2s; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
+        .switch-btn:active { transform: scale(0.96); }
+        .btn-saklar1 { background: linear-gradient(135deg, #007aff, #0051a8); }
+        .btn-saklar2 { background: linear-gradient(135deg, #ff9500, #c67400); }
+        .btn-stop { width: 100%; background: #ff3b30; margin-bottom: 25px; }
+
+        /* Custom Slider Container (Mobile Control Center Style) */
+        .control-group { background: #f2f2f7; padding: 18px; border-radius: 18px; margin-bottom: 18px; text-align: left; }
+        .control-header { display: flex; justify-content: space-between; font-weight: 600; font-size: 14px; color: #1c1c1e; margin-bottom: 10px; }
+        .slider-row { display: flex; align-items: center; gap: 12px; }
+        .slider-icon { font-size: 20px; color: #8e8e93; }
+
+        /* Style Slider Kecerahan HP & Volume Kecepatan */
+        .custom-slider {
+            -webkit-appearance: none;
+            width: 100%;
+            height: 12px;
+            border-radius: 10px;
+            background: #e5e5ea;
+            outline: none;
+            transition: background 0.3s;
+        }
+
+        .custom-slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 26px;
+            height: 26px;
+            border-radius: 50%;
+            background: #ffffff;
+            box-shadow: 0 3px 8px rgba(0,0,0,0.3);
+            cursor: pointer;
+            transition: transform 0.1s;
+        }
+
+        .custom-slider::-webkit-slider-thumb:active {
+            transform: scale(1.2);
+        }
+
+        .val-text { font-size: 13px; font-weight: bold; color: #007aff; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h2>ESP32 Smart Controller</h2>
+    <div id="connection-status" class="status-badge offline">Connecting to Cloud...</div>
+
+    <!-- Visual Status Lampu -->
+    <div class="grid-lampu">
+        <div class="card-lampu" id="card-l12">
+            <div class="bulb-wrapper"><div id="bulb-l12" class="bulb-icon">💡</div></div>
+            <div><strong>Lampu 1 & 2</strong></div>
+            <div id="text-l12" style="font-size:12px; font-weight:bold; color:#8e8e93; margin-top:4px;">0% (OFF)</div>
+        </div>
+        <div class="card-lampu" id="card-l34">
+            <div class="bulb-wrapper"><div id="bulb-l34" class="bulb-icon">💡</div></div>
+            <div><strong>Kedip 3 & 4</strong></div>
+            <div id="text-l34" style="font-size:12px; font-weight:bold; color:#8e8e93; margin-top:4px;">OFF</div>
+        </div>
+    </div>
+
+    <!-- Tombol Saklar 1 & Saklar 2 -->
+    <div class="switches-container">
+        <button class="switch-btn btn-saklar1" onclick="sendCommand('LAMP12_TOGGLE')">🔌 SAKLAR 1<br><small style="font-weight:normal;">Lampu 1 & 2</small></button>
+        <button class="switch-btn btn-saklar2" onclick="sendCommand('LAMP34_TOGGLE')">⚡ SAKLAR 2<br><small style="font-weight:normal;">Kedip 3 & 4</small></button>
+    </div>
+
+    <!-- Slider Kecerahan (Gaya Kecerahan HP / Screen Brightness) -->
+    <div class="control-group">
+        <div class="control-header">
+            <span>Kecerahan Layar / Lampu</span>
+            <span class="val-text"><span id="brightVal">0</span>%</span>
+        </div>
+        <div class="slider-row">
+            <span class="slider-icon" style="font-size: 14px;">🔅</span>
+            <input type="range" min="0" max="100" value="0" class="custom-slider" id="brightSlider" 
+                   onchange="sendBrightness(this.value)" 
+                   oninput="document.getElementById('brightVal').innerText = this.value">
+            <span class="slider-icon" style="font-size: 22px;">🔆</span>
+        </div>
+    </div>
+
+    <!-- Slider Kecepatan Kedip (Gaya Volume Rocker) -->
+    <div class="control-group">
+        <div class="control-header">
+            <span>Kecepatan Blink</span>
+            <span class="val-text"><span id="speedVal">0</span>% (<span id="intervalVal">3.00</span>s)</span>
+        </div>
+        <div class="slider-row">
+            <span class="slider-icon">🔈</span>
+            <input type="range" min="0" max="100" value="0" class="custom-slider" id="speedSlider" 
+                   onchange="sendSpeed(this.value)" 
+                   oninput="updateSpeedLabel(this.value)">
+            <span class="slider-icon">🔊</span>
+        </div>
+    </div>
+
+    <!-- Tombol Master Stop -->
+    <button class="switch-btn btn-stop" onclick="sendCommand('STOP_ALL')">🛑 STOP ALL (MATIKAN SEMUA)</button>
+</div>
+
+<script>
+    const client = mqtt.connect('wss://test.mosquitto.org:8081');
+
+    client.on('connect', () => {
+        const badge = document.getElementById('connection-status');
+        badge.innerText = "Terhubung ke Cloud";
+        badge.className = "status-badge online";
+        client.subscribe('esp32/lampu/status');
+    });
+
+    client.on('offline', () => {
+        const badge = document.getElementById('connection-status');
+        badge.innerText = "Terputus dari Cloud";
+        badge.className = "status-badge offline";
+    });
+
+    client.on('message', (topic, message) => {
+        const payload = message.toString();
+        
+        // Status Brightness Lampu 1 & 2
+        const matchBright = payload.match(/BRIGHT:(\d+)/);
+        if (matchBright) {
+            const val = parseInt(matchBright[1]);
+            document.getElementById('brightSlider').value = val;
+            document.getElementById('brightVal').innerText = val;
+            document.getElementById('text-l12').innerText = val > 0 ? val + "% (ON)" : "0% (OFF)";
+            
+            const bulb = document.getElementById('bulb-l12');
+            const card = document.getElementById('card-l12');
+            if (val > 0) {
+                bulb.style.opacity = 0.3 + (val / 100) * 0.7;
+                bulb.style.filter = `drop-shadow(0 0 ${val/6}px #ffcc00)`;
+                card.className = "card-lampu active";
+            } else {
+                bulb.style.opacity = "0.25";
+                bulb.style.filter = "grayscale(100%)";
+                card.className = "card-lampu";
+            }
+        }
+
+        // Status Kecepatan Kedip
+        const matchSpeed = payload.match(/SPD:(\d+)/);
+        if (matchSpeed) {
+            const spdVal = parseInt(matchSpeed[1]);
+            document.getElementById('speedSlider').value = spdVal;
+            updateSpeedLabel(spdVal);
+        }
+
+        // Status Kedip Lampu 3 & 4
+        if (payload.includes("L34:ON")) {
+            document.getElementById('bulb-l34').style.opacity = "1";
+            document.getElementById('bulb-l34').style.filter = "drop-shadow(0 0 10px #ffcc00)";
+            document.getElementById('card-l34').className = "card-lampu active";
+            document.getElementById('text-l34').innerText = "KEDIP ACTIVE";
+        } else {
+            document.getElementById('bulb-l34').style.opacity = "0.25";
+            document.getElementById('bulb-l34').style.filter = "grayscale(100%)";
+            document.getElementById('card-l34').className = "card-lampu";
+            document.getElementById('text-l34').innerText = "OFF";
+        }
+    });
+
+    function updateSpeedLabel(val) {
+        document.getElementById('speedVal').innerText = val;
+        const seconds = (3.0 - ((val / 100) * 2.9)).toFixed(2);
+        document.getElementById('intervalVal').innerText = seconds;
+    }
+
+    function sendCommand(cmd) { client.publish('esp32/lampu/control', cmd); }
+    function sendBrightness(val) { client.publish('esp32/lampu/control', 'SET_BRIGHT:' + val); }
+    function sendSpeed(val) { client.publish('esp32/lampu/control', 'SET_SPEED:' + val); }
+</script>
+
+</body>
+</html>
