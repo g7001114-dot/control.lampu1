@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Futuristic Parking HUD - ESP32 IoT</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            background-color: #0b0f19;
+            color: #e2e8f0;
+            font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            overflow: hidden;
+        }
+
+        .cluster-container {
+            width: 100%;
+            max-width: 440px;
+            background: linear-gradient(145deg, #131b2e, #0d1322);
+            border: 2px solid #1e293b;
+            border-radius: 24px;
+            box-shadow: 0 0 30px rgba(0, 243, 255, 0.1), inset 0 0 15px rgba(0, 0, 0, 0.8);
+            padding: 25px;
+            position: relative;
+            text-align: center;
+        }
+
+        /* Top Header HUD */
+        .cluster-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+            border-bottom: 1px solid rgba(255,255,255,0.08);
+            padding-bottom: 10px;
+        }
+        .cluster-title {
+            font-size: 11px;
+            font-weight: 700;
+            letter-spacing: 2px;
+            color: #64748b;
+            text-transform: uppercase;
+        }
+        .live-indicator {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 11px;
+            color: #00f3ff;
+            font-weight: 600;
+        }
+        .pulse-dot {
+            width: 8px;
+            height: 8px;
+            background-color: #00f3ff;
+            border-radius: 50%;
+            box-shadow: 0 0 8px #00f3ff;
+            animation: dotPulse 1.5s infinite;
+        }
+
+        /* Radar / Sonar Arcs Display Container */
+        .radar-display {
+            position: relative;
+            width: 220px;
+            height: 130px;
+            margin: 15px auto;
+            overflow: hidden;
+        }
+        .car-icon {
+            position: absolute;
+            bottom: 0;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 44px;
+            height: 75px;
+            background: #1e293b;
+            border: 2px solid #475569;
+            border-radius: 10px 10px 6px 6px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.5);
+            z-index: 5;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            padding: 6px 4px;
+        }
+        .car-roof {
+            width: 80%;
+            height: 25px;
+            background: #0f172a;
+            margin: 0 auto;
+            border-radius: 4px;
+            border: 1px solid #334155;
+        }
+        .car-lights {
+            display: flex;
+            justify-content: space-between;
+        }
+        .headlight { width: 6px; height: 3px; background: #00f3ff; border-radius: 2px; }
+        .taillight { width: 6px; height: 3px; background: #ef4444; border-radius: 2px; }
+
+        /* Sonar Wave Rings */
+        .sonar-arc {
+            position: absolute;
+            bottom: 0;
+            left: 50%;
+            transform: translateX(-50%);
+            border: 2px dashed rgba(255, 255, 255, 0.15);
+            border-bottom: none;
+            border-top-left-radius: 200px;
+            border-top-right-radius: 200px;
+            transition: all 0.3s ease;
+        }
+        .arc-1 { width: 90px; height: 50px; }
+        .arc-2 { width: 150px; height: 85px; }
+        .arc-3 { width: 210px; height: 120px; }
+
+        /* Digital Gauge / Main Values */
+        .gauge-card {
+            background: rgba(15, 23, 42, 0.6);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            border-radius: 16px;
+            padding: 15px;
+            margin-top: 15px;
+        }
+        .distance-value-box {
+            font-size: 52px;
+            font-weight: 800;
+            font-family: 'Courier New', Courier, monospace;
+            letter-spacing: -2px;
+            color: #00f3ff;
+            text-shadow: 0 0 15px rgba(0, 243, 255, 0.4);
+            line-height: 1;
+            margin: 5px 0;
+        }
+        .distance-unit {
+            font-size: 16px;
+            font-weight: 500;
+            color: #94a3b8;
+        }
+
+        /* Status HUD Badge */
+        .status-hud {
+            margin-top: 12px;
+            padding: 10px;
+            border-radius: 10px;
+            font-size: 13px;
+            font-weight: 700;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            transition: all 0.3s ease;
+        }
+
+        /* Status Color Themes */
+        .theme-safe .distance-value-box { color: #10b981; text-shadow: 0 0 15px rgba(16, 185, 129, 0.4); }
+        .theme-safe .status-hud { background: rgba(16, 185, 129, 0.15); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.3); }
+        .theme-safe .arc-3 { border-color: #10b981; box-shadow: 0 0 10px rgba(16, 185, 129, 0.3); }
+
+        .theme-warn .distance-value-box { color: #f59e0b; text-shadow: 0 0 15px rgba(245, 158, 11, 0.4); }
+        .theme-warn .status-hud { background: rgba(245, 158, 11, 0.15); color: #fbbf24; border: 1px solid rgba(245, 158, 11, 0.3); }
+        .theme-warn .arc-2 { border-color: #f59e0b; box-shadow: 0 0 10px rgba(245, 158, 11, 0.3); }
+
+        .theme-danger .distance-value-box { color: #ef4444; text-shadow: 0 0 20px rgba(239, 68, 68, 0.6); }
+        .theme-danger .status-hud { background: rgba(239, 68, 68, 0.2); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.4); animation: dangerFlash 0.6s infinite alternate; }
+        .theme-danger .arc-1 { border-color: #ef4444; box-shadow: 0 0 15px rgba(239, 68, 68, 0.6); }
+        .cluster-container.danger-shake { animation: shake 0.2s infinite; }
+
+        @keyframes dotPulse {
+            0% { transform: scale(0.95); opacity: 0.8; }
+            50% { transform: scale(1.3); opacity: 1; box-shadow: 0 0 12px #00f3ff; }
+            100% { transform: scale(0.95); opacity: 0.8; }
+        }
+        @keyframes dangerFlash {
+            0% { background: rgba(239, 68, 68, 0.2); }
+            100% { background: rgba(239, 68, 68, 0.45); }
+        }
+        @keyframes shake {
+            0% { transform: translate(1px, 1px) rotate(0deg); }
+            20% { transform: translate(-2px, 0px) rotate(-1deg); }
+            40% { transform: translate(1px, -1px) rotate(1deg); }
+            60% { transform: translate(-1px, 1px) rotate(0deg); }
+            80% { transform: translate(2px, 0px) rotate(1deg); }
+            100% { transform: translate(1px, -2px) rotate(-1deg); }
+        }
+
+        /* Audio / Vibration Control Button */
+        .btn-activate {
+            margin-top: 15px;
+            background: transparent;
+            border: 1px solid #334155;
+            color: #94a3b8;
+            padding: 8px 16px;
+            border-radius: 8px;
+            font-size: 11px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .btn-activate:hover { border-color: #00f3ff; color: #00f3ff; }
+    </style>
+</head>
+<body id="bodyTag">
+
+    <div class="cluster-container" id="clusterBox">
+        <!-- Header HUD -->
+        <div class="cluster-header">
+            <span class="cluster-title">REVERSE PARKING SYSTEM</span>
+            <div class="live-indicator">
+                <div class="pulse-dot"></div>
+                <span>CLOUD LINK</span>
+            </div>
+        </div>
+
+        <!-- Radar / Parking Sensor Display -->
+        <div class="radar-display">
+            <div class="sonar-arc arc-3"></div>
+            <div class="sonar-arc arc-2"></div>
+            <div class="sonar-arc arc-1"></div>
+            
+            <!-- Mobil / Objek Kendaraan -->
+            <div class="car-icon">
+                <div class="car-lights">
+                    <div class="headlight"></div>
+                    <div class="headlight"></div>
+                </div>
+                <div class="car-roof"></div>
+                <div class="car-lights">
+                    <div class="taillight"></div>
+                    <div class="taillight"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Digital Value Gauge -->
+        <div class="gauge-card">
+            <div class="cluster-title">JARAK OBJEK BELAKANG</div>
+            <div>
+                <span class="distance-value-box" id="jarakText">--</span>
+                <span class="distance-unit">cm</span>
+            </div>
+        </div>
+
+        <!-- Status HUD Banner -->
+        <div id="statusHud" class="status-hud theme-safe">
+            MENYINKRONKAN DATA...
+        </div>
+
+        <button class="btn-activate" onclick="aktifkanGetarAudio()">AKTIFKAN ALERTS HP</button>
+    </div>
+
+    <!-- Firebase Modular SDK -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+        import { getDatabase, ref, onValue } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
+
+        // Konfigurasi Firebase Anda
+        const firebaseConfig = {
+            databaseURL: "https://projek-anda-default-rtdb.firebaseio.com/"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const db = getDatabase(app);
+        const dbRef = ref(db, 'ultrasonic');
+        
+        const clusterBox = document.getElementById("clusterBox");
+        const statusHud = document.getElementById("statusHud");
+        const jarakText = document.getElementById("jarakText");
+
+        onValue(dbRef, (snapshot) => {
+            const data = snapshot.val();
+            if (data) {
+                const valJarak = parseFloat(data.jarak);
+                jarakText.innerText = data.jarak;
+
+                // Logika Tampilan Cluster Futuristik berdasarkan Jarak
+                if (valJarak < 10.0 || data.status === "DEKAT") {
+                    clusterBox.className = "cluster-container theme-danger danger-shake";
+                    statusHud.className = "status-hud";
+                    statusHud.innerText = "⚠️ BAHAYA: TERLALU DEKAT! STOP!";
+                    triggerVibration([300, 100, 300]);
+                } else if (valJarak >= 10.0 && valJarak <= 30.0 || data.status === "SEDANG") {
+                    clusterBox.className = "cluster-container theme-warn";
+                    statusHud.className = "status-hud";
+                    statusHud.innerText = "⚡ PERINGATAN: POSISI SEDANG";
+                    triggerVibration(150);
+                } else {
+                    clusterBox.className = "cluster-container theme-safe";
+                    statusHud.className = "status-hud";
+                    statusHud.innerText = "✅ AMAN / MUNDUR NORMAL";
+                }
+            }
+        });
+    </script>
+
+    <script>
+        function aktifkanGetarAudio() {
+            if ("vibrate" in navigator) {
+                navigator.vibrate([100, 50, 100]);
+                alert("Haptic feedback & sensor getar HP berhasil diaktifkan!");
+            } else {
+                alert("Browser tidak mendukung fitur getar.");
+            }
+        }
+
+        function triggerVibration(pattern) {
+            if ("vibrate" in navigator) {
+                try {
+                    navigator.vibrate(pattern);
+                } catch(e) {}
+            }
+        }
+    </script>
+
+</body>
+</html>
