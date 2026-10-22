@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ESP32 Parking Sensor</title>
+
+<style>
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background: #080d18;
+  color: white;
+  font-family: Arial, sans-serif;
+}
+
+.container {
+  width: 90%;
+  max-width: 350px;
+  padding: 30px 20px;
+  text-align: center;
+  background: #111c30;
+  border: 1px solid #29456d;
+  border-radius: 20px;
+  box-shadow: 0 0 20px #102b50;
+}
+
+h2 {
+  color: #65baff;
+  font-size: 20px;
+}
+
+.subtitle {
+  color: #9db4dc;
+  font-size: 13px;
+  margin-bottom: 25px;
+}
+
+.lamp {
+  width: 65px;
+  height: 65px;
+  margin: 20px auto;
+  border-radius: 50%;
+  background: #475569;
+  box-shadow: 0 0 10px #475569;
+  transition: .3s;
+}
+
+.distance {
+  font-size: 55px;
+  font-weight: bold;
+  margin: 20px 0 5px;
+}
+
+.unit {
+  color: #9db4dc;
+  font-size: 16px;
+}
+
+.status {
+  margin-top: 20px;
+  padding: 12px;
+  border-radius: 10px;
+  background: #263449;
+  color: #dbeafe;
+  font-size: 14px;
+  font-weight: bold;
+}
+
+.connection {
+  margin-top: 18px;
+  font-size: 12px;
+  color: #9db4dc;
+}
+
+.green {
+  background: #20e45d;
+  box-shadow: 0 0 25px #20e45d;
+}
+
+.yellow {
+  background: #ffd52f;
+  box-shadow: 0 0 25px #ffd52f;
+}
+
+.red {
+  background: #ff354f;
+  box-shadow: 0 0 25px #ff354f;
+}
+</style>
+</head>
+
+<body>
+<div class="container">
+
+  <h2>🚘 PARKING SENSOR</h2>
+  <div class="subtitle">ESP32 • HC-SR04 • Firebase</div>
+
+  <div class="lamp" id="lamp"></div>
+
+  <div class="distance" id="distance">--</div>
+  <div class="unit">Jarak objek (cm)</div>
+
+  <div class="status" id="status">
+    Menunggu data...
+  </div>
+
+  <div class="connection" id="connection">
+    Menghubungkan ke Firebase...
+  </div>
+
+</div>
+
+<script type="module">
+import { initializeApp }
+  from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+
+import { getDatabase, ref, onValue }
+  from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
+
+/* Ganti dengan URL Firebase milikmu */
+const firebaseConfig = {
+  databaseURL: "https://projek-anda-default-rtdb.firebaseio.com/"
+};
+
+const app = initializeApp(firebaseConfig);
+const db = getDatabase(app);
+
+/* Lokasi data sensor di Firebase */
+const sensorRef = ref(db, "ultrasonic");
+
+const lamp = document.getElementById("lamp");
+const distanceText = document.getElementById("distance");
+const statusText = document.getElementById("status");
+const connectionText = document.getElementById("connection");
+
+onValue(sensorRef, (snapshot) => {
+  const data = snapshot.val();
+
+  if (!data) {
+    connectionText.textContent = "Data sensor belum tersedia";
+    return;
+  }
+
+  /* Mendukung data bernama jarak atau distance */
+  const distance = Number(data.jarak ?? data.distance);
+
+  if (!Number.isFinite(distance) || distance < 2 || distance > 400) {
+    distanceText.textContent = "--";
+    statusText.textContent = "Data jarak tidak valid";
+    return;
+  }
+
+  distanceText.textContent = distance.toFixed(1);
+
+  lamp.className = "lamp";
+
+  if (distance <= 30) {
+    lamp.classList.add("red");
+    statusText.textContent = "BAHAYA! OBJEK DEKAT";
+  } else if (distance <= 100) {
+    lamp.classList.add("yellow");
+    statusText.textContent = "HATI-HATI";
+  } else {
+    lamp.classList.add("green");
+    statusText.textContent = "JARAK RELATIF AMAN";
+  }
+
+  connectionText.textContent = "ESP32 terhubung • Data diterima";
+  connectionText.style.color = "#20e45d";
+
+}, (error) => {
+  connectionText.textContent = "Koneksi gagal: periksa Firebase";
+  connectionText.style.color = "#ff354f";
+  console.error(error);
+});
+</script>
+
+</body>
+</html>
