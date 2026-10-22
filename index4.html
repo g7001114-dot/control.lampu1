@@ -1,0 +1,694 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Futuristic Reverse Parking HUD</title>
+
+<style>
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+:root {
+  --blue: #4d8dff;
+  --green: #20e45d;
+  --yellow: #ffd52f;
+  --orange: #ff8a27;
+  --red: #ff354f;
+  --text: #dce8ff;
+}
+
+body {
+  min-height: 100vh;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 18px;
+  background: #03060c;
+  color: var(--text);
+  font-family: "Segoe UI", Arial, sans-serif;
+}
+
+.cluster {
+  width: 100%;
+  max-width: 1100px;
+  padding: 25px;
+  overflow: hidden;
+  position: relative;
+  border: 1px solid #263954;
+  border-radius: 25px;
+  background:
+    radial-gradient(ellipse at center, #101c31 0%, #050912 65%);
+  box-shadow: 0 0 35px #10294a;
+}
+
+.header {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  padding-bottom: 15px;
+  border-bottom: 1px solid #23334c;
+}
+
+.clock, .temperature {
+  font-size: clamp(14px, 2vw, 22px);
+  color: #b8cbed;
+}
+
+.temperature {
+  text-align: right;
+}
+
+.reverse {
+  text-align: center;
+}
+
+.reverse strong {
+  display: block;
+  font-size: 55px;
+  line-height: 1;
+  color: white;
+  text-shadow: 0 0 20px #70aaff;
+}
+
+.reverse span {
+  letter-spacing: 2px;
+  font-size: 12px;
+}
+
+.dashboard {
+  display: grid;
+  grid-template-columns: 1fr 1.3fr 1fr;
+  align-items: center;
+  gap: 20px;
+  padding: 22px 0;
+}
+
+.side {
+  text-align: center;
+}
+
+.speed {
+  border: 1px solid #263b5b;
+  border-radius: 35% 35% 15px 15px;
+  padding: 20px 5px;
+  background: #08101e;
+}
+
+.speed-number {
+  font-size: clamp(50px, 7vw, 85px);
+  font-weight: 300;
+}
+
+.speed-unit {
+  color: #9db9e7;
+  font-size: 18px;
+}
+
+.small-info {
+  margin-top: 18px;
+  font-size: 12px;
+  color: #a9c2e8;
+}
+
+.radar {
+  height: 290px;
+  position: relative;
+  overflow: hidden;
+}
+
+.radar-title {
+  text-align: center;
+  color: #8ea8d2;
+  font-size: 11px;
+  letter-spacing: 2px;
+  margin-bottom: 5px;
+}
+
+.car {
+  position: absolute;
+  top: 15px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 72px;
+  height: 108px;
+  z-index: 5;
+  border-radius: 22px 22px 14px 14px;
+  border: 2px solid #647a96;
+  background: linear-gradient(
+    90deg, #25364d, #8a9bb1 22%,
+    #17253a 45%, #5e7189 78%, #26364c
+  );
+  box-shadow: 0 8px 18px #000;
+}
+
+.car::before {
+  content: "";
+  position: absolute;
+  top: 18px;
+  left: 11px;
+  right: 11px;
+  height: 43px;
+  border-radius: 10px;
+  background: linear-gradient(#0a1424, #20344d);
+  border: 1px solid #536a85;
+}
+
+.car::after {
+  content: "";
+  position: absolute;
+  bottom: 10px;
+  left: 6px;
+  right: 6px;
+  height: 7px;
+  background: #ff354f;
+  border-radius: 4px;
+  box-shadow: 0 0 12px #ff354f;
+}
+
+.arc {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  border: 2px solid currentColor;
+  border-bottom: 0;
+  border-radius: 250px 250px 0 0;
+  transition: .3s;
+}
+
+.arc-1 {
+  top: 115px;
+  width: 115px;
+  height: 60px;
+  color: var(--green);
+  background: #20e45d20;
+}
+
+.arc-2 {
+  top: 115px;
+  width: 175px;
+  height: 100px;
+  color: var(--yellow);
+  background: #ffd52f20;
+}
+
+.arc-3 {
+  top: 115px;
+  width: 235px;
+  height: 145px;
+  color: var(--orange);
+  background: #ff8a2720;
+}
+
+.arc-4 {
+  top: 115px;
+  width: 285px;
+  height: 190px;
+  color: var(--red);
+  background: #ff354f20;
+}
+
+.arc.inactive {
+  opacity: .12;
+}
+
+.sensor-panel {
+  padding: 15px;
+  border: 1px solid #263b5b;
+  border-radius: 15px;
+  background: #070d18;
+}
+
+.sensor-symbol {
+  text-align: center;
+  font-size: 26px;
+  margin-bottom: 12px;
+}
+
+.legend {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 13px 0;
+  font-size: clamp(13px, 1.6vw, 20px);
+}
+
+.bar {
+  width: 11px;
+  height: 30px;
+  border-radius: 3px;
+}
+
+.red { background: var(--red); color: var(--red); }
+.orange { background: var(--orange); color: var(--orange); }
+.yellow { background: var(--yellow); color: var(--yellow); }
+.green { background: var(--green); color: var(--green); }
+
+.warning {
+  border-top: 1px solid #263b5b;
+  padding-top: 13px;
+  margin-top: 15px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 12px;
+  line-height: 1.5;
+  color: #b8cbed;
+}
+
+.warning-icon {
+  color: var(--red);
+  font-size: 28px;
+}
+
+.distance-card {
+  text-align: center;
+  padding: 16px;
+  border: 1px solid #263b5b;
+  border-radius: 13px;
+  background: #070d18;
+}
+
+.label {
+  font-size: 11px;
+  letter-spacing: 2px;
+  color: #8197b8;
+}
+
+.distance {
+  font-size: clamp(38px, 6vw, 58px);
+  font-weight: 700;
+  color: white;
+  margin: 6px 0;
+  text-shadow: 0 0 15px #8dbbff;
+}
+
+.unit {
+  font-size: 18px;
+  color: #9db4dc;
+}
+
+.status {
+  padding: 12px;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: bold;
+  letter-spacing: 1px;
+  background: #20e45d18;
+  color: var(--green);
+  border: 1px solid #20e45d55;
+}
+
+.theme-warn .status {
+  background: #ffd52f18;
+  color: var(--yellow);
+  border-color: #ffd52f66;
+}
+
+.theme-danger .status {
+  background: #ff354f25;
+  color: var(--red);
+  border-color: #ff354f99;
+  animation: flash .5s infinite alternate;
+}
+
+.theme-safe .distance {
+  color: var(--green);
+}
+
+.theme-warn .distance {
+  color: var(--yellow);
+}
+
+.theme-danger .distance {
+  color: var(--red);
+}
+
+.connection {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px solid #263b5b;
+  font-size: 11px;
+  color: #9db4dc;
+}
+
+#connectionStatus {
+  color: var(--orange);
+  font-weight: bold;
+}
+
+button {
+  padding: 8px 12px;
+  background: transparent;
+  border: 1px solid #344763;
+  border-radius: 7px;
+  color: #b8cbed;
+  cursor: pointer;
+}
+
+button:hover {
+  border-color: #5bc8ff;
+  color: #5bc8ff;
+}
+
+@keyframes flash {
+  to { filter: brightness(1.6); }
+}
+
+@media (max-width: 700px) {
+  body {
+    padding: 8px;
+    align-items: flex-start;
+  }
+
+  .cluster {
+    padding: 14px;
+  }
+
+  .dashboard {
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+  }
+
+  .center-panel {
+    grid-column: 1 / -1;
+    grid-row: 1;
+  }
+
+  .radar {
+    max-width: 310px;
+    width: 100%;
+    margin: auto;
+  }
+
+  .speed-number {
+    font-size: 52px;
+  }
+
+  .legend {
+    font-size: 13px;
+    margin: 9px 0;
+  }
+
+  .bar {
+    height: 23px;
+    width: 9px;
+  }
+}
+
+@media (max-width: 360px) {
+  .dashboard {
+    grid-template-columns: 1fr;
+  }
+
+  .center-panel {
+    grid-column: auto;
+  }
+}
+</style>
+</head>
+
+<body>
+
+<div class="cluster theme-safe" id="clusterBox">
+
+  <header class="header">
+    <div>
+      <div class="clock" id="clockText">--:--</div>
+      <div style="font-size:10px;color:#5bc8ff;margin-top:6px">
+        ● ESP32 CLOUD
+      </div>
+    </div>
+
+    <div class="reverse">
+      <strong>R</strong>
+      <span>REVERSE</span>
+    </div>
+
+    <div class="temperature">28°C</div>
+  </header>
+
+  <main class="dashboard">
+
+    <section class="side">
+      <div class="speed">
+        <div class="speed-number">0</div>
+        <div class="speed-unit">km/h</div>
+      </div>
+      <div class="small-info">◉ SENSOR ULTRASONIK</div>
+      <div class="small-info">JANGKAUAN 2–400 cm</div>
+    </section>
+
+    <section class="center-panel">
+      <div class="radar-title">AREA DETEKSI BELAKANG</div>
+      <div class="radar">
+        <div class="car"></div>
+        <div class="arc arc-1"></div>
+        <div class="arc arc-2"></div>
+        <div class="arc arc-3"></div>
+        <div class="arc arc-4"></div>
+      </div>
+    </section>
+
+    <section class="side">
+      <div class="sensor-panel">
+        <div class="sensor-symbol">🚘 )))</div>
+
+        <div class="legend">
+          <span class="bar red"></span>
+          <span style="color:var(--red)">≤ 30 cm</span>
+        </div>
+
+        <div class="legend">
+          <span class="bar orange"></span>
+          <span style="color:var(--orange)">31–60 cm</span>
+        </div>
+
+        <div class="legend">
+          <span class="bar yellow"></span>
+          <span style="color:var(--yellow)">61–150 cm</span>
+        </div>
+
+        <div class="legend">
+          <span class="bar green"></span>
+          <span style="color:var(--green)">> 150 cm</span>
+        </div>
+
+        <div class="warning">
+          <span class="warning-icon">⚠</span>
+          <span>Periksa sekitar<br>untuk keamanan</span>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <section class="distance-card">
+    <div class="label">JARAK OBJEK BELAKANG</div>
+    <div>
+      <span class="distance" id="jarakText">--</span>
+      <span class="unit">cm</span>
+    </div>
+    <div class="status" id="statusHud">
+      MENUNGGU DATA SENSOR...
+    </div>
+  </section>
+
+  <footer class="connection">
+    <span>
+      DATA SENSOR:
+      <span id="connectionStatus">BELUM TERHUBUNG</span>
+    </span>
+
+    <span id="lastUpdate">Pembaruan: --</span>
+
+    <button id="alertButton" type="button">
+      AKTIFKAN ALERT HP
+    </button>
+  </footer>
+
+</div>
+
+<script type="module">
+import {
+  initializeApp
+} from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+
+import {
+  getDatabase,
+  ref,
+  onValue
+} from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
+
+/* GANTI dengan URL Firebase milikmu */
+const firebaseConfig = {
+  databaseURL: "https://projek-anda-default-rtdb.firebaseio.com/"
+};
+
+const app = initializeApp(firebaseConfig);
+const db = getDatabase(app);
+
+/* Harus sama dengan lokasi data yang dikirim ESP32 */
+const dbRef = ref(db, "ultrasonic");
+
+const clusterBox = document.getElementById("clusterBox");
+const jarakText = document.getElementById("jarakText");
+const statusHud = document.getElementById("statusHud");
+const connectionStatus = document.getElementById("connectionStatus");
+const lastUpdate = document.getElementById("lastUpdate");
+
+let alertEnabled = false;
+let previousBand = "";
+
+function updateRadar(band) {
+  document.querySelectorAll(".arc").forEach(arc => {
+    arc.classList.add("inactive");
+  });
+
+  let active = [];
+
+  if (band === "safe") {
+    active = [".arc-1", ".arc-2", ".arc-3", ".arc-4"];
+  } else if (band === "caution") {
+    active = [".arc-1", ".arc-2", ".arc-3"];
+  } else if (band === "warn") {
+    active = [".arc-1", ".arc-2"];
+  } else if (band === "danger") {
+    active = [".arc-1"];
+  }
+
+  active.forEach(selector => {
+    document.querySelector(selector)?.classList.remove("inactive");
+  });
+}
+
+function updateDistance(rawValue) {
+  const distance = Number(rawValue);
+
+  if (!Number.isFinite(distance) || distance < 2 || distance > 400) {
+    jarakText.textContent = "--";
+    statusHud.textContent = "DATA JARAK TIDAK VALID";
+    clusterBox.className = "cluster";
+    updateRadar("none");
+    return;
+  }
+
+  jarakText.textContent = distance.toFixed(1);
+
+  let band;
+  let message;
+
+  if (distance <= 30) {
+    band = "danger";
+    message = "⚠ BAHAYA — BERHENTI!";
+  } else if (distance <= 60) {
+    band = "warn";
+    message = "⚡ PERINGATAN — OBJEK MENDEKAT";
+  } else if (distance <= 150) {
+    band = "caution";
+    message = "PERHATIKAN JARAK";
+  } else {
+    band = "safe";
+    message = "AMAN RELATIF — TETAP WASPADA";
+  }
+
+  clusterBox.className =
+    "cluster " +
+    (band === "danger" ? "theme-danger" :
+     band === "warn" || band === "caution" ? "theme-warn" :
+     "theme-safe");
+
+  statusHud.textContent = message;
+  updateRadar(band);
+
+  if (alertEnabled && band !== previousBand) {
+    if ("vibrate" in navigator) {
+      if (band === "danger") {
+        navigator.vibrate([300, 100, 300]);
+      } else if (band === "warn") {
+        navigator.vibrate([150, 70, 150]);
+      } else {
+        navigator.vibrate(0);
+      }
+    }
+  }
+
+  previousBand = band;
+}
+
+/* Mendengarkan perubahan data Firebase secara langsung */
+onValue(dbRef, snapshot => {
+  const data = snapshot.val();
+
+  if (!data) {
+    connectionStatus.textContent = "DATA KOSONG";
+    statusHud.textContent = "MENUNGGU DATA DARI ESP32...";
+    return;
+  }
+
+  /* Mendukung {jarak: 45} atau {distance: 45} */
+  const value = data.jarak ?? data.distance;
+
+  if (value === undefined || value === null) {
+    connectionStatus.textContent = "FORMAT DATA SALAH";
+    statusHud.textContent = "PERIKSA FORMAT DATA";
+    return;
+  }
+
+  updateDistance(value);
+
+  connectionStatus.textContent = "TERHUBUNG";
+  connectionStatus.style.color = "#20e45d";
+
+  lastUpdate.textContent =
+    "Pembaruan: " +
+    new Date().toLocaleTimeString("id-ID", {
+      hour: "2-digit",
+      minute: "2-digit",
+      second: "2-digit"
+    });
+
+}, error => {
+  connectionStatus.textContent = "GAGAL TERHUBUNG";
+  connectionStatus.style.color = "#ff354f";
+  statusHud.textContent = "PERIKSA KONEKSI FIREBASE";
+  console.error("Firebase:", error);
+});
+
+/* Jam digital */
+function updateClock() {
+  document.getElementById("clockText").textContent =
+    new Date().toLocaleTimeString("id-ID", {
+      hour: "2-digit",
+      minute: "2-digit"
+    });
+}
+
+updateClock();
+setInterval(updateClock, 10000);
+
+/* Aktifkan getaran jika browser mendukungnya */
+document.getElementById("alertButton").addEventListener("click", () => {
+  alertEnabled = true;
+
+  if ("vibrate" in navigator) {
+    navigator.vibrate([100, 50, 100]);
+    alert("Alert getar diaktifkan jika perangkat mendukungnya.");
+  } else {
+    alert("Browser atau perangkat ini tidak mendukung getaran.");
+  }
+
+  document.getElementById("alertButton").textContent = "ALERT HP AKTIF";
+});
+</script>
+
+</body>
+</html>
