@@ -1,0 +1,809 @@
+
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Conveyor Mini | IoT Monitoring</title>
+
+<style>
+:root {
+  --bg: #0b1220;
+  --panel: #131e30;
+  --panel2: #19273c;
+  --border: #293950;
+  --text: #edf4ff;
+  --muted: #94a7c3;
+  --green: #22c987;
+  --yellow: #f5b942;
+  --red: #ff5c68;
+  --blue: #4b91ff;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  font-family: Arial, Helvetica, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+}
+
+button { font: inherit; cursor: pointer; }
+
+header {
+  padding: 20px 24px;
+  background: #111c2d;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.logo {
+  font-size: 30px;
+  background: #203651;
+  padding: 10px;
+  border-radius: 12px;
+}
+
+h1 { font-size: 21px; margin: 0 0 6px; }
+.subtitle { font-size: 12px; color: var(--muted); }
+
+.pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  border: 1px solid var(--border);
+  padding: 9px 12px;
+  border-radius: 30px;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--green);
+  display: inline-block;
+}
+
+.layout {
+  display: grid;
+  grid-template-columns: 190px minmax(0, 1fr);
+  min-height: calc(100vh - 82px);
+}
+
+.sidebar {
+  padding: 20px 12px;
+  border-right: 1px solid var(--border);
+  background: #0e1929;
+}
+
+.nav {
+  display: block;
+  width: 100%;
+  text-align: left;
+  color: var(--muted);
+  background: transparent;
+  border: 0;
+  padding: 13px;
+  margin-bottom: 5px;
+  border-radius: 9px;
+}
+
+.nav.active, .nav:hover {
+  background: #203b60;
+  color: white;
+}
+
+.main { padding: 22px; min-width: 0; }
+
+.section-title {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-bottom: 15px;
+}
+
+.section-title h2 { font-size: 17px; margin: 0; }
+
+.small { color: var(--muted); font-size: 12px; }
+
+.grid {
+  display: grid;
+  gap: 14px;
+}
+
+.metrics {
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  margin-bottom: 18px;
+}
+
+.card {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 17px;
+  min-width: 0;
+}
+
+.metric-label {
+  font-size: 12px;
+  color: var(--muted);
+  margin-bottom: 13px;
+}
+
+.metric-icon {
+  font-size: 22px;
+  margin-bottom: 10px;
+}
+
+.metric-value {
+  font-size: 25px;
+  font-weight: bold;
+  overflow-wrap: anywhere;
+}
+
+.metric-unit {
+  font-size: 13px;
+  font-weight: normal;
+  color: var(--muted);
+}
+
+.metric-note {
+  font-size: 11px;
+  margin-top: 10px;
+  color: var(--green);
+}
+
+.middle {
+  grid-template-columns: minmax(0, 1.6fr) minmax(250px, 1fr)
+                      minmax(240px, 0.9fr);
+  margin-bottom: 18px;
+}
+
+.machine {
+  background: linear-gradient(145deg, #182941, #0d1727);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 15px;
+  margin-top: 15px;
+  overflow: hidden;
+}
+
+.machine-scene {
+  height: 185px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+}
+
+.sensor-head {
+  background: #3975ae;
+  border: 2px solid #6aa8e5;
+  border-radius: 5px;
+  width: 32px;
+  height: 27px;
+  z-index: 2;
+}
+
+.sensor-beam {
+  width: 3px;
+  height: 43px;
+  background: var(--blue);
+  box-shadow: 0 0 18px var(--blue);
+  opacity: .75;
+}
+
+.belt {
+  width: 88%;
+  height: 35px;
+  background: #4a5b70;
+  border: 4px solid #71849b;
+  border-radius: 8px;
+  position: relative;
+  margin-top: 0;
+}
+
+.belt::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: repeating-linear-gradient(
+    90deg, transparent 0 18px, #8192a5 19px 21px
+  );
+  animation: beltMove 1s linear infinite;
+}
+
+@keyframes beltMove {
+  from { background-position: 0 0; }
+  to { background-position: 40px 0; }
+}
+
+.belt.stopped::after { animation-play-state: paused; }
+
+.roller {
+  width: 17px;
+  height: 35px;
+  background: #8294a8;
+  border-radius: 50%;
+  position: absolute;
+  top: -4px;
+}
+
+.roller.left { left: -10px; }
+.roller.right { right: -10px; }
+
+.object {
+  width: 34px;
+  height: 30px;
+  background: #f1b54a;
+  border: 2px solid #ffe0a0;
+  position: absolute;
+  left: 55%;
+  top: -32px;
+  border-radius: 4px;
+  transition: left .5s;
+  z-index: 2;
+}
+
+.motor {
+  width: 52px;
+  height: 38px;
+  background: #087bb8;
+  border: 2px solid #54b9ef;
+  border-radius: 8px;
+  margin-top: 12px;
+  align-self: flex-start;
+  margin-left: 6%;
+}
+
+.machine-caption {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  flex-wrap: wrap;
+  font-size: 11px;
+  color: var(--muted);
+  margin-top: 12px;
+}
+
+.data-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 13px 0;
+  border-bottom: 1px solid var(--border);
+  font-size: 13px;
+}
+
+.data-row:last-child { border-bottom: 0; }
+.data-row span:first-child { color: var(--muted); }
+.data-row strong { text-align: right; overflow-wrap: anywhere; }
+
+.status-box {
+  border: 1px solid #176b4e;
+  background: #102d2b;
+  color: #70edba;
+  border-radius: 10px;
+  padding: 13px;
+  font-size: 13px;
+  line-height: 1.6;
+  margin-top: 14px;
+}
+
+.status-box.warning {
+  border-color: #896625;
+  background: #352a16;
+  color: #ffd277;
+}
+
+.status-box.danger {
+  border-color: #853a47;
+  background: #391d29;
+  color: #ff9aa3;
+}
+
+.buttons {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-top: 16px;
+}
+
+.btn {
+  padding: 12px 8px;
+  border: 0;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: bold;
+}
+
+.btn-green { background: var(--green); color: #06251a; }
+.btn-red { background: var(--red); color: white; }
+.btn-gray { background: #2c3b50; color: white; }
+
+.btn:focus-visible, .nav:focus-visible {
+  outline: 2px solid white;
+  outline-offset: 3px;
+}
+
+.charts {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  margin-bottom: 18px;
+}
+
+.chart-area {
+  height: 145px;
+  margin-top: 15px;
+}
+
+canvas { width: 100%; height: 100%; display: block; }
+
+.bottom {
+  grid-template-columns: minmax(0, 1.5fr) minmax(230px, 1fr);
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+}
+
+th, td {
+  padding: 12px 8px;
+  text-align: left;
+  border-bottom: 1px solid var(--border);
+}
+
+th { color: var(--muted); font-weight: normal; }
+td:last-child, th:last-child { text-align: right; }
+
+.events {
+  list-style: none;
+  padding: 0;
+  margin: 12px 0 0;
+}
+
+.events li {
+  padding: 12px 0;
+  border-bottom: 1px solid var(--border);
+  font-size: 12px;
+  line-height: 1.6;
+}
+
+.events time {
+  display: block;
+  color: var(--muted);
+  font-size: 10px;
+}
+
+footer {
+  padding: 20px;
+  text-align: center;
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.sim-banner {
+  padding: 11px 14px;
+  background: #302918;
+  border: 1px solid #6c5726;
+  border-radius: 10px;
+  color: #ffda88;
+  font-size: 12px;
+  margin-bottom: 18px;
+  line-height: 1.5;
+}
+
+@media (max-width: 1100px) {
+  .metrics { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .middle { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .charts { grid-template-columns: 1fr 1fr; }
+  .charts .card:last-child { grid-column: 1 / -1; }
+}
+
+@media (max-width: 720px) {
+  header { padding: 15px; }
+  h1 { font-size: 17px; }
+  .layout { display: block; }
+  .sidebar {
+    display: flex;
+    gap: 5px;
+    overflow-x: auto;
+    padding: 9px;
+    border-right: 0;
+    border-bottom: 1px solid var(--border);
+  }
+  .nav {
+    width: auto;
+    flex: 0 0 auto;
+    margin: 0;
+    font-size: 12px;
+    padding: 11px;
+  }
+  .main { padding: 13px; }
+  .metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 9px; }
+  .card { padding: 13px; }
+  .metric-value { font-size: 21px; }
+  .middle, .charts, .bottom { grid-template-columns: 1fr; }
+  .charts .card:last-child { grid-column: auto; }
+  .machine-scene { height: 170px; }
+  table { font-size: 11px; }
+  th, td { padding: 10px 4px; }
+}
+</style>
+</head>
+
+<body>
+<header>
+  <div class="brand">
+    <div class="logo">⚙️</div>
+    <div>
+      <h1>Conveyor Mini</h1>
+      <div class="subtitle">Industrial IoT Monitoring System</div>
+    </div>
+  </div>
+
+  <div class="pill">
+    <span class="dot"></span>
+    <span id="connection">SIMULASI AKTIF</span>
+  </div>
+</header>
+
+<div class="layout">
+  <aside class="sidebar">
+    <button class="nav active" data-target="beranda">⌂ Beranda</button>
+    <button class="nav" data-target="grafik">▥ Grafik Sensor</button>
+    <button class="nav" data-target="riwayat">◷ Riwayat</button>
+    <button class="nav" data-target="koneksi">☁ Koneksi</button>
+  </aside>
+
+  <main class="main">
+    <div class="sim-banner">
+      ⚠ MODE SIMULASI — Nilai sensor di halaman ini dibuat oleh browser.
+      Belum ada koneksi ke ESP32 atau MQTT.
+    </div>
+
+    <section id="beranda">
+      <div class="section-title">
+        <h2>Ringkasan Sistem</h2>
+        <span class="small" id="clock">Memuat waktu...</span>
+      </div>
+
+      <div class="grid metrics">
+        <div class="card">
+          <div class="metric-icon">🛡️</div>
+          <div class="metric-label">Status Sistem</div>
+          <div class="metric-value" id="systemStatus">NORMAL</div>
+          <div class="metric-note" id="systemNote">Data simulasi</div>
+        </div>
+
+        <div class="card">
+          <div class="metric-icon">⚙️</div>
+          <div class="metric-label">Status Motor</div>
+          <div class="metric-value" id="motorStatus">AKTIF</div>
+          <div class="metric-note">Status simulasi</div>
+        </div>
+
+        <div class="card">
+          <div class="metric-icon">🌡️</div>
+          <div class="metric-label">Suhu Motor</div>
+          <div class="metric-value"><span id="motorTemp">35.0</span><span class="metric-unit"> °C</span></div>
+          <div class="metric-note">DS18B20 · simulasi</div>
+        </div>
+
+        <div class="card">
+          <div class="metric-icon">ϟ</div>
+          <div class="metric-label">Arus Motor</div>
+          <div class="metric-value"><span id="motorCurrent">0.30</span><span class="metric-unit"> A</span></div>
+          <div class="metric-note">ACS712 · simulasi</div>
+        </div>
+
+        <div class="card">
+          <div class="metric-icon">⌁</div>
+          <div class="metric-label">Jarak Objek</div>
+          <div class="metric-value"><span id="distance">18.5</span><span class="metric-unit"> cm</span></div>
+          <div class="metric-note">HC-SR04 · simulasi</div>
+        </div>
+      </div>
+
+      <div class="grid middle">
+        <div class="card">
+          <div class="section-title">
+            <h2>Visualisasi Konveyor</h2>
+            <span class="small">Ilustrasi</span>
+          </div>
+
+          <div class="machine">
+            <div class="machine-scene">
+              <div class="sensor-head"></div>
+              <div class="sensor-beam"></div>
+              <div class="belt" id="belt">
+                <div class="roller left"></div>
+                <div class="roller right"></div>
+                <div class="object" id="object"></div>
+              </div>
+              <div class="motor"></div>
+            </div>
+            <div class="machine-caption">
+              <span>Sensor jarak</span>
+              <span id="machineStatus">Motor berjalan (simulasi)</span>
+            </div>
+          </div>
+
+          <div class="buttons">
+            <button class="btn btn-green" id="startBtn">▶ Simulasi Jalan</button>
+            <button class="btn btn-red" id="stopBtn">■ Simulasi Berhenti</button>
+          </div>
+          <p class="small">Tombol ini hanya mengubah animasi dan data simulasi, bukan mengendalikan motor fisik.</p>
+        </div>
+
+        <div class="card">
+          <div class="section-title">
+            <h2>Data Real-time</h2>
+            <span class="small">● DEMO</span>
+          </div>
+
+          <div class="data-row"><span>🌡 Suhu lingkungan</span><strong><span id="ambientTemp">29.0</span> °C</strong></div>
+          <div class="data-row"><span>🌡 Suhu motor</span><strong><span id="tempRow">35.0</span> °C</strong></div>
+          <div class="data-row"><span>ϟ Arus motor</span><strong><span id="currentRow">0.30</span> A</strong></div>
+          <div class="data-row"><span>⌁ Jarak objek</span><strong><span id="distanceRow">18.5</span> cm</strong></div>
+          <div class="data-row"><span>⚙ Motor</span><strong id="motorRow">AKTIF</strong></div>
+          <div class="data-row"><span>☁ MQTT</span><strong>Belum terhubung</strong></div>
+        </div>
+
+        <div class="card">
+          <div class="section-title">
+            <h2>Notifikasi</h2>
+          </div>
+
+          <div class="status-box" id="alertBox">
+            ✓ SIMULASI NORMAL
+            <br>Belum ada peringatan.
+          </div>
+
+          <div class="section-title" style="margin-top:20px">
+            <h2>Koneksi Perangkat</h2>
+          </div>
+          <div class="data-row"><span>ESP32</span><strong>Simulasi</strong></div>
+          <div class="data-row"><span>Wi-Fi</span><strong>Belum terhubung</strong></div>
+          <div class="data-row"><span>MQTT Broker</span><strong>Belum diatur</strong></div>
+          <div class="data-row"><span>Dashboard</span><strong>Aktif</strong></div>
+        </div>
+      </div>
+    </section>
+
+    <section id="grafik">
+      <div class="section-title">
+        <h2>Grafik Sensor</h2>
+        <span class="small">Data contoh yang berubah otomatis</span>
+      </div>
+
+      <div class="grid charts">
+        <div class="card">
+          <h3 style="font-size:14px">🌡 Suhu Motor (°C)</h3>
+          <div class="chart-area"><canvas id="tempChart"></canvas></div>
+        </div>
+        <div class="card">
+          <h3 style="font-size:14px">ϟ Arus Motor (A)</h3>
+          <div class="chart-area"><canvas id="currentChart"></canvas></div>
+        </div>
+        <div class="card">
+          <h3 style="font-size:14px">⌁ Jarak Objek (cm)</h3>
+          <div class="chart-area"><canvas id="distanceChart"></canvas></div>
+        </div>
+      </div>
+    </section>
+
+    <section id="riwayat">
+      <div class="section-title">
+        <h2>Riwayat Kejadian</h2>
+        <button class="btn btn-gray" id="clearEvents">Hapus riwayat demo</button>
+      </div>
+      <div class="card">
+        <ul class="events" id="events">
+          <li>Dashboard simulasi dimulai<time>Baru saja</time></li>
+        </ul>
+      </div>
+    </section>
+
+    <section id="koneksi">
+      <div class="section-title">
+        <h2>Informasi Koneksi</h2>
+      </div>
+      <div class="card">
+        <div class="data-row"><span>Mode dashboard</span><strong>SIMULASI</strong></div>
+        <div class="data-row"><span>Perangkat</span><strong>ESP32 + MicroPython</strong></div>
+        <div class="data-row"><span>Editor program</span><strong>Thonny</strong></div>
+        <div class="data-row"><span>Protokol yang direncanakan</span><strong>MQTT over TLS</strong></div>
+        <div class="data-row"><span>Broker</span><strong>Belum dibuat</strong></div>
+        <div class="data-row"><span>Backend API</span><strong>Belum dihubungkan</strong></div>
+        <div class="status-box warning">
+          Dashboard ini belum membaca data perangkat sungguhan.
+          Jangan gunakan nilai demo untuk keputusan keselamatan mesin.
+        </div>
+      </div>
+    </section>
+  </main>
+</div>
+
+<footer>
+  Conveyor Mini IoT · ESP32 · MicroPython · MQTT
+  <br>Prototipe pembelajaran — bukan sistem keselamatan industri tersertifikasi.
+</footer>
+
+<script>
+const $ = id => document.getElementById(id);
+
+let motorOn = true;
+let temp = 35;
+let ambient = 29;
+let current = 0.30;
+let distance = 18.5;
+
+const history = {
+  temp: Array(24).fill(temp),
+  current: Array(24).fill(current),
+  distance: Array(24).fill(distance)
+};
+
+function addEvent(message) {
+  const li = document.createElement("li");
+  li.textContent = message;
+
+  const time = document.createElement("time");
+  time.textContent = new Date().toLocaleTimeString("id-ID");
+  li.appendChild(time);
+
+  $("events").prepend(li);
+
+  while ($("events").children.length > 15) {
+    $("events").lastElementChild.remove();
+  }
+}
+
+function updateClock() {
+  $("clock").textContent =
+    new Date().toLocaleString("id-ID", {
+      dateStyle: "medium",
+      timeStyle: "medium"
+    });
+}
+
+function updateDisplay() {
+  $("motorTemp").textContent = temp.toFixed(1);
+  $("tempRow").textContent = temp.toFixed(1);
+  $("ambientTemp").textContent = ambient.toFixed(1);
+
+  $("motorCurrent").textContent = current.toFixed(2);
+  $("currentRow").textContent = current.toFixed(2);
+
+  $("distance").textContent = distance.toFixed(1);
+  $("distanceRow").textContent = distance.toFixed(1);
+
+  $("motorStatus").textContent = motorOn ? "AKTIF" : "BERHENTI";
+  $("motorRow").textContent = motorOn ? "AKTIF" : "BERHENTI";
+  $("machineStatus").textContent =
+    motorOn ? "Motor berjalan (simulasi)" : "Motor berhenti (simulasi)";
+
+  $("belt").classList.toggle("stopped", !motorOn);
+  $("object").style.left = (30 + (distance % 40)) + "%";
+
+  const warning = temp >= 60 || current >= 5;
+  const danger = temp >= 70 || current >= 10;
+
+  $("systemStatus").textContent = danger ? "GANGGUAN" :
+                                  warning ? "PERINGATAN" : "NORMAL";
+
+  $("systemNote").textContent = danger ? "Batas demo terlampaui" :
+                                warning ? "Periksa data demo" : "Mode simulasi";
+
+  $("alertBox").className = "status-box" +
+    (danger ? " danger" : warning ? " warning" : "");
+
+  $("alertBox").textContent = danger
+    ? "⚠ Nilai simulasi melewati batas contoh."
+    : warning
+      ? "⚠ Peringatan simulasi: periksa nilai sensor."
+      : "✓ SIMULASI NORMAL — Belum ada peringatan.";
+
+  $("connection").textContent = "SIMULASI AKTIF";
+}
+
+function drawChart(canvasId, values, color, maxValue) {
+  const canvas = $(canvasId);
+  const rect = canvas.getBoundingClientRect();
+  if (!rect.width || !rect.height) return;
+
+  const dpr = window.devicePixelRatio || 1;
+  canvas.width = rect.width * dpr;
+  canvas.height = rect.height * dpr;
+
+  const ctx = canvas.getContext("2d");
+  ctx.scale(dpr, dpr);
+
+  const w = rect.width;
+  const h = rect.height;
+  const left = 30, right = 8, top = 8, bottom = 22;
+  const plotW = w - left - right;
+  const plotH = h - top - bottom;
+
+  ctx.clearRect(0, 0, w, h);
+  ctx.font = "10px Arial";
+  ctx.strokeStyle = "#293950";
+  ctx.fillStyle = "#94a7c3";
+  ctx.lineWidth = 1;
+
+  for (let i = 0; i <= 4; i++) {
+    const y = top + plotH * i / 4;
+    ctx.beginPath();
+    ctx.moveTo(left, y);
+    ctx.lineTo(w - right, y);
+    ctx.stroke();
+    ctx.fillText(String(Math.round(maxValue * (4 - i) / 4)), 2, y + 3);
+  }
+
+  ctx.strokeStyle = color;
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+
+  values.forEach((v, i) => {
+    const x = left + (plotW * i / (values.length - 1));
+    const y = top + plotH * (1 - Math.min(v, maxValue) / maxValue);
+    if (i === 0) ctx.moveTo(x, y);
+    else ctx.lineTo(x, y);
+  });
+
+  ctx.stroke();
+  ctx.fillStyle = "#94a7c3";
+  ctx.fillText("Lama pengamatan →", left, h - 5);
+}
+
+function drawCharts() {
+  drawChart("tempChart", history.temp, "#f5b942", 100);
+  drawChart("currentChart", history.current, "#22c987", 10);
+  drawChart("distanceChart", history.distance, "#8b78ff", 40);
+}
+
+function simulate() {
+  if (motorOn) {
+    temp = Math.max(25, Math.min(75, temp + (Math.random() - 0.48) * 1.2));
+    current = Math.max(0.1, Math.min(12, 0.7 + Math.random() * 1.0));
+    distance = Math.max(5, Math.min(40, 18 + (Math.random() - 0.5) * 20));
+  } else {
+    current = 0;
+    temp = Math.max(25, temp - 0.1);
+    distance = Math.max(5, Math.min(40, 18 + (Math.random() - 0.5) * 20));
+  }
+
+  ambient = 28 + Math.random() * 3;
+
+  history.temp.push(temp);
+  history.current.push(current);
+  history.distance.push(distance);
+
+  for (const key of Object.keys(history)) {
+    if (history[key].length > 24) history[key].shift();
+  }
+
+  updateDisplay();
+  drawCharts();
+  updateClock();
+}
+
+$("startBtn").addEventListe
